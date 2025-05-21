@@ -1,35 +1,39 @@
 package com.example.lees_penguins
 
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.annotation.RequiresApi
-import androidx.compose.foundation.Image // <-- NEW IMPORT
-import androidx.compose.foundation.layout.Arrangement // <-- NEW IMPORT
-import androidx.compose.foundation.layout.Column // <-- NEW IMPORT
-import androidx.compose.foundation.layout.Row // <-- NEW IMPORT
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth // <-- NEW IMPORT
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button // <-- NEW IMPORT
+import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment // <-- NEW IMPORT
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource // <-- NEW IMPORT
+// import androidx.compose.ui.res.painterResource // No longer needed if using assets.open directly
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp // <-- NEW IMPORT
+import androidx.compose.ui.unit.dp
 import com.example.lees_penguins.ui.theme.Lees_PenguinsTheme
-import java.time.LocalDate // <-- NEW IMPORT
-import java.time.format.DateTimeFormatter // <-- NEW IMPORT
-import androidx.compose.ui.layout.ContentScale // <-- NEW IMPORT
-import androidx.compose.ui.platform.LocalContext // <-- NEW IMPORT (for asset management)
-import android.graphics.BitmapFactory // <-- NEW IMPORT (for asset management)
-import android.graphics.Bitmap // <-- NEW IMPORT (for asset management)
-import androidx.compose.ui.graphics.asImageBitmap // <-- NEW IMPORT (for converting Bitmap to ImageBitmap)
+
+// Imports for image loading from assets
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import android.graphics.BitmapFactory
+import android.graphics.Bitmap
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.ui.graphics.asImageBitmap
+
+// Imports for date handling
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 
 class MainActivity : ComponentActivity() {
@@ -40,7 +44,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             Lees_PenguinsTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    // CALL OUR NEW MAIN APP COMPOSABLE HERE
                     PenguinAppLayout(modifier = Modifier.padding(innerPadding))
                 }
             }
@@ -48,65 +51,79 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// ------------------- NEW COMPOSABLE FUNCTION BELOW -------------------
+// ------------------- UPDATED COMPOSABLE FUNCTION BELOW -------------------
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun PenguinAppLayout(modifier: Modifier = Modifier) {
-    val currentDate = LocalDate.now()
-    // Define the desired date format (ISO 8601)
+    // Current date (set to 2025-07-05 for development testing)
+    val currentDate = LocalDate.of(2025, 7, 10)
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-    // Format the current date
     val formattedDate = currentDate.format(formatter)
-    // NEW: Get the Android context to access assets
+
     val context = LocalContext.current
-    Column(
-        modifier = modifier
-            .fillMaxSize() // Make the column fill the screen
-            .padding(16.dp), // Add some overall padding
-        horizontalAlignment = Alignment.CenterHorizontally, // Center contents horizontally
-        verticalArrangement = Arrangement.SpaceBetween // Distribute space between elements
-    ) {
-        // 1. Date TextView (equivalent)
-        Text(
-            text = "Today's Date: $formattedDate", // Placeholder date for now
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
 
-        val todayImageFilename = "2025-07-05 0.001 Rumii Only You Can Walk Your Path Quote.png" // <--- REPLACE WITH AN ACTUAL FILENAME FROM YOUR ASSETS
+    // --- DYNAMIC IMAGE FILENAME DETERMINATION ---
+    var imageFileName: String? = null
+    try {
+        // List all files in the assets folder
+        val assetFiles = context.assets.list("") // List all top-level asset files
+        if (assetFiles != null) {
+            // Find the first file that starts with our formatted date and ends with .png
+            imageFileName = assetFiles.firstOrNull { it.startsWith(formattedDate) && it.endsWith(".png") }
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        // Log this error or show a toast message
+        // For debugging: Log.e("PenguinApp", "Error listing assets: ${e.message}")
+    }
 
-        var bitmap: Bitmap? = null
+    var bitmap: Bitmap? = null
+    if (imageFileName != null) { // Only attempt to load if a filename was found
         try {
-            // Open the image file from assets
-            val inputStream = context.assets.open(todayImageFilename)
-            // Decode the input stream into a Bitmap
+            val inputStream = context.assets.open(imageFileName) // Use the dynamically found filename
             bitmap = BitmapFactory.decodeStream(inputStream)
         } catch (e: Exception) {
             e.printStackTrace()
-            // Handle error, e.g., show a placeholder or an error message
+            // Log this error or show a toast message
+            // For debugging: Log.e("PenguinApp", "Error decoding image $imageFileName: ${e.message}")
         }
+    }
 
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        // 1. Date Text
+        Text(
+            text = "Today's Date: $formattedDate",
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // 2. Penguin Image
         if (bitmap != null) {
             Image(
                 bitmap = bitmap.asImageBitmap(), // Convert Android Bitmap to Compose ImageBitmap
-                contentDescription = "Daily Penguin Image",
+                contentDescription = "Daily Penguin Image for $formattedDate", // Update content description
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(1f) // Makes the image take up available vertical space
                     .fillMaxWidth(), // Make it fill width for better display
                 contentScale = ContentScale.Fit // Adjust how the image scales
             )
         } else {
-            // Show a fallback text if image loading fails
-            Text(text = "Error loading penguin image!")
+            // Fallback if no image found for today's date or loading failed
+            Text(text = "No penguin image found for $formattedDate :(",
+                modifier = Modifier.weight(1f).fillMaxWidth().padding(16.dp)) // Give fallback text some space
         }
 
-
-
-        // 3. Navigation Buttons (equivalent)
+        // 3. Navigation Buttons
         Row(
             modifier = Modifier
-                .fillMaxWidth() // Make the row fill the width
-                .padding(top = 16.dp), // Add some padding above buttons
-            horizontalArrangement = Arrangement.SpaceAround, // Distribute buttons evenly
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Button(onClick = { /* TODO: Implement previous day logic */ }) {
@@ -121,24 +138,14 @@ fun PenguinAppLayout(modifier: Modifier = Modifier) {
         }
     }
 }
-// ------------------- END NEW COMPOSABLE FUNCTION -------------------
+// ------------------- END UPDATED COMPOSABLE FUNCTION -------------------
 
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
-fun DefaultPreview() { // Renamed from GreetingPreview to be more generic for our new layout
+fun DefaultPreview() {
     Lees_PenguinsTheme {
-        PenguinAppLayout() // Preview our new layout
+        PenguinAppLayout()
     }
 }
-
-// You can remove or keep the old Greeting composable if you want to reuse it,
-// but it's not being used in the main app now.
-// @Composable
-// fun Greeting(name: String, modifier: Modifier = Modifier) {
-//     Text(
-//         text = "Hi, my name is $name!",
-//         modifier = modifier
-//     )
-// }
