@@ -15,12 +15,22 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember // <-- NEW IMPORT
+import androidx.compose.runtime.mutableStateOf // <-- NEW IMPORT
+import androidx.compose.runtime.getValue // <-- NEW IMPORT
+import androidx.compose.runtime.setValue // <-- NEW IMPORT
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 // import androidx.compose.ui.res.painterResource // No longer needed if using assets.open directly
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.lees_penguins.ui.theme.Lees_PenguinsTheme
+
+
+import androidx.compose.ui.graphics.Color // <-- Make sure this is here
+import androidx.compose.ui.text.font.FontWeight // <-- Make sure this is here
+import androidx.compose.ui.unit.sp // <-- Make sure this is here (for text size)
+
 
 // Imports for image loading from assets
 import androidx.compose.ui.layout.ContentScale
@@ -55,21 +65,31 @@ class MainActivity : ComponentActivity() {
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun PenguinAppLayout(modifier: Modifier = Modifier) {
-    // Current date (set to 2025-07-05 for development testing)
-    val currentDate = LocalDate.of(2025, 7, 10)
-    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-    val formattedDate = currentDate.format(formatter)
+
+    // --- STATE FOR THE CURRENTLY DISPLAYED DATE ---
+
+    var displayedDate by remember { mutableStateOf(LocalDate.now()) }
+
+    // --- Formatter for Image Lookup (yyyy-MM-dd) ---
+
+    val filenameFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    val filenameDate = displayedDate.format(filenameFormatter) // This is what the image lookup uses
+
+
+    // --- Formatter for User Display (EEEE dd MMMM) ---
+    val displayFormatter = DateTimeFormatter.ofPattern("EEEE dd MMMM")
+    val displayDateText = displayedDate.format(displayFormatter) // This is what the Text composable uses
 
     val context = LocalContext.current
 
-    // --- DYNAMIC IMAGE FILENAME DETERMINATION ---
+    // --- DYNAMIC IMAGE FILENAME DETERMINATION (uses filenameDate)---
     var imageFileName: String? = null
     try {
         // List all files in the assets folder
         val assetFiles = context.assets.list("") // List all top-level asset files
         if (assetFiles != null) {
             // Find the first file that starts with our formatted date and ends with .png
-            imageFileName = assetFiles.firstOrNull { it.startsWith(formattedDate) && it.endsWith(".png") }
+            imageFileName = assetFiles.firstOrNull { it.startsWith(filenameDate) && it.endsWith(".png") }
         }
     } catch (e: Exception) {
         e.printStackTrace()
@@ -98,12 +118,16 @@ fun PenguinAppLayout(modifier: Modifier = Modifier) {
     ) {
         // 1. Date Text
         Text(
-            text = "Today's Date: $formattedDate",
-            modifier = Modifier.padding(bottom = 16.dp)
+            text = displayDateText,
+            modifier = Modifier.padding(bottom = 16.dp),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFC94235)
         )
 
         // 2. Penguin Image
         if (bitmap != null) {
+            val formattedDate = ""
             Image(
                 bitmap = bitmap.asImageBitmap(), // Convert Android Bitmap to Compose ImageBitmap
                 contentDescription = "Daily Penguin Image for $formattedDate", // Update content description
@@ -114,6 +138,7 @@ fun PenguinAppLayout(modifier: Modifier = Modifier) {
             )
         } else {
             // Fallback if no image found for today's date or loading failed
+            val formattedDate = ""
             Text(text = "No penguin image found for $formattedDate :(",
                 modifier = Modifier.weight(1f).fillMaxWidth().padding(16.dp)) // Give fallback text some space
         }
@@ -126,13 +151,13 @@ fun PenguinAppLayout(modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Button(onClick = { /* TODO: Implement previous day logic */ }) {
+            Button(onClick = {displayedDate = displayedDate.minusDays(1) }) {
                 Text(text = "Previous")
             }
-            Button(onClick = { /* TODO: Implement today logic */ }) {
+            Button(onClick = {displayedDate = LocalDate.now() }) {
                 Text(text = "Today")
             }
-            Button(onClick = { /* TODO: Implement next day logic */ }) {
+            Button(onClick = { displayedDate = displayedDate.plusDays(1) }) {
                 Text(text = "Next")
             }
         }
